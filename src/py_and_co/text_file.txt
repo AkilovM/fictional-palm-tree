@@ -1,0 +1,2 @@
+This is text from text_file.txt
+Abc 123
