@@ -21,10 +21,23 @@
 
 
 
+Подойдёт ли обычный requests.get в асинхронной функции?
+ 
+TODO проверить
+Предварительно - нет. Нужно использовать aiohttp.
+
+
+
 Библиотеки Python для асинхронного программирования:
 - asyncio
 - aiohttp
 - aiofiles
+
+
+
+TODO Нужно проверить - асинхрон подойдет только для БД, реквестов, файлов. То есть только там где есть стадия ожидания результатов. 
+Если в асинхроне выполнять долгую затратную вычислительную операцию, то в этот момент другие операции выполняться не будут.
+
 '''
 
 
@@ -49,7 +62,7 @@ async def main():
         results = await asyncio.gather(*tasks)
         
         for result in results:
-            print(result)
+            print(f'Response length: {len(result)}')
 
 asyncio.run(main())
 
@@ -66,9 +79,11 @@ async def read_file(file_path):
         return contents
 
 async def main():
-    file_paths = ['file1.txt', 'file2.txt', 'file3.txt']
+    #file_paths = ['file1.txt', 'file2.txt', 'file3.txt']
+    subfolder_path = 'src/py_and_co/'
+    file_paths = ['text_file.txt', 'text_file.txt', 'text_file.txt']
     
-    tasks = [read_file(file_path) for file_path in file_paths]
+    tasks = [read_file(subfolder_path + file_path) for file_path in file_paths]
     results = await asyncio.gather(*tasks)
     
     for result in results:
