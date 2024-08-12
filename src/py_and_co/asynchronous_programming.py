@@ -21,10 +21,9 @@
 
 
 
-Подойдёт ли обычный requests.get в асинхронной функции?
- 
-TODO проверить
-Предварительно - нет. Нужно использовать aiohttp.
+Подойдёт ли обычный requests.get в asyncio?
+
+Нет.
 
 
 
@@ -37,6 +36,8 @@ TODO проверить
 
 TODO Нужно проверить - асинхрон подойдет только для БД, реквестов, файлов. То есть только там где есть стадия ожидания результатов. 
 Если в асинхроне выполнять долгую затратную вычислительную операцию, то в этот момент другие операции выполняться не будут.
+
+TODO Добавить пример с БД.
 
 '''
 
@@ -108,3 +109,49 @@ async def main():
     )
 
 asyncio.run(main())
+
+
+
+# Замерим время и попробуем сделать 10 запросов параллельно
+
+import time
+import requests
+import asyncio
+import aiohttp
+
+def noasync_requestsget_1request():
+    start = time.time()
+    requests.get('https://example.com')
+    end = time.time()
+    print('NO Async, requests.get(), 1 request - ', end - start) #  ~ 0.32 sec
+
+def noasync_requestsget_10requests():
+    urls = ['https://example.com'] * 10
+    start = time.time()
+    for url in urls:
+        requests.get(url)
+    end = time.time()
+    print('NO Async, requests.get(), 10 requests - ', end - start) #  ~ 3.27 sec
+
+async def fetch_url(session, url):
+    async with session.get(url) as response:
+        return await response.text()
+
+async def async_aiohttpsession_urls(urls):    
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_url(session, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+def async_aiohttp_1request():
+    urls = ['https://example.com']
+    start = time.time()
+    asyncio.run(async_aiohttpsession_urls(urls))
+    end = time.time()
+    print('Async, aiohttp.ClientSession, 1 request -  ', end - start) #  ~ 0.33 sec
+
+def async_aiohttp_10requests():
+    urls = ['https://example.com'] * 10
+    start = time.time()
+    asyncio.run(async_aiohttpsession_urls(urls))
+    end = time.time()
+    print('Async, aiohttp.ClientSession, 10 requests -  ', end - start) #  ~ 0.33 sec  (10 запросов по времени заняли как 1 запрос)
