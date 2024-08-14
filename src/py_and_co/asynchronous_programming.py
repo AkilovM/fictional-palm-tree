@@ -34,8 +34,11 @@
 
 
 
-TODO Нужно проверить - асинхрон подойдет только для БД, реквестов, файлов. То есть только там где есть стадия ожидания результатов. 
-Если в асинхроне выполнять долгую затратную вычислительную операцию, то в этот момент другие операции выполняться не будут.
+Когда вы определяете функцию с ключевым словом async, Python создает корутину, которую можно запустить и управлять её выполнением с помощью await, 
+а также планировать выполнение с помощью таких инструментов, как asyncio.create_task, await asyncio.gather.
+
+Корутина (coroutine) — это объект, представляющий асинхронную задачу, которая может выполнять асинхронные операции, например, ввод-вывод, не блокируя основной поток выполнения.
+
 
 TODO Добавить пример с БД.
 
@@ -112,7 +115,7 @@ asyncio.run(main())
 
 
 
-# Замерим время и попробуем сделать 10 запросов параллельно
+# Пример 4: Выполняем 10 HTTP-запросов параллельно
 
 import time
 import requests
@@ -155,3 +158,68 @@ def async_aiohttp_10requests():
     asyncio.run(async_aiohttpsession_urls(urls))
     end = time.time()
     print('Async, aiohttp.ClientSession, 10 requests -  ', end - start) #  ~ 0.33 sec  (10 запросов по времени заняли как 1 запрос)
+
+
+
+# Пример неправильного использования async: пока выполняется реквест, запускается блокирующий код time.sleep. Пока он не выполнится, результат реквеста не будет обработан.
+
+import time
+import asyncio
+import aiohttp
+
+async def blocking_code():
+    start = time.time()
+    time.sleep(1)
+    end = time.time()
+    print('Blocking code time - ', end - start)
+
+async def fetch_url(session, url):
+    result = ''
+    start = time.time()
+    async with session.get(url) as response:
+        result = await response.text()
+    end = time.time()
+    print('fetch url time - ', end - start)
+    return result
+
+async def async_request_and_sleep():
+    url = 'https://example.com'
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            fetch_url(session, url),    # 1.32
+            blocking_code()             # 1.00
+        ]
+        results = await asyncio.gather(*tasks)
+
+asyncio.run(async_request_and_sleep())
+
+
+
+# Тест производительности - асинхронное чтение файлов.
+# Read 1 files             0.0023   sec
+# Read 10 files            0.0039   sec
+# Read 100 files           0.0263   sec
+# Read 1000 files          0.3006   sec
+# Read 10000 files         3.3957   sec
+# Read 100000 files       35.7291   sec
+
+import time
+import asyncio
+import aiofiles
+
+async def read_file(file_path):
+    async with aiofiles.open(file_path, mode='r') as f:
+        contents = await f.read()
+        return contents
+
+async def async_read_files(filepaths):
+    start = time.time()
+    tasks = [read_file(filepath) for filepath in filepaths]
+    results = await asyncio.gather(*tasks)
+    end = time.time()
+    print(f'Read {len(filepaths)} files\t\t', end - start)
+
+filepath = 'src/py_and_co/text_file.txt'
+for i in range(6):
+    filepaths = [filepath] * 10**i
+    asyncio.run(async_read_files(filepaths))
